@@ -8,14 +8,14 @@ interface PhoneConsultationFormProps {
   title?: string;
 }
 
-// const SITE_ID = import.meta.env.VITE_SITE_ID ?? '후유장해'; // 이 줄은 더 이상 사용하지 않습니다.
-
 export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
   const [formData, setFormData] = useState({
     name: '',
-    birthDate: '',      // YYYYMMDD
+    birthDate: '',     // YYYYMMDD
     gender: '',
-    phoneNumber: '',    // 8자리
+    phoneNumber: '',   // 8자리
+    surgeryDate: '',   // <-- 1단계: 추가됨
+    diagnosis: '',     // <-- 1단계: 추가됨
     agreedToTerms: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,7 +38,15 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
   };
 
   const resetForm = () =>
-    setFormData({ name: '', birthDate: '', gender: '', phoneNumber: '', agreedToTerms: false });
+    setFormData({
+      name: '',
+      birthDate: '',
+      gender: '',
+      phoneNumber: '',
+      surgeryDate: '',
+      diagnosis: '',
+      agreedToTerms: false,
+    });
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -56,6 +64,8 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
         phone: `010-${(formData.phoneNumber || '').trim()}`,
         birth: formData.birthDate.trim(),
         gender: formData.gender as '남' | '여' | '',
+        surgeryDate: formData.surgeryDate.trim(), // <-- 3단계: 추가됨
+        diagnosis: formData.diagnosis.trim(),     // <-- 3단계: 추가됨
         requestedAt: kstDate.toISOString(),
       };
 
@@ -179,6 +189,29 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
                 required
               />
             </div>
+          </div>
+
+          {/* 2단계: 추가된 입력 칸 */}
+          <div className="space-y-2">
+            <label className="text-white text-base block">수술 시점</label>
+            <Input
+              placeholder="수술 또는 진단 받으신 시점 (예: 2024년 5월)"
+              value={formData.surgeryDate}
+              onChange={e => handleInputChange('surgeryDate', e.target.value)}
+              className="bg-white border-0 h-12 text-gray-800 placeholder:text-gray-500"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-white text-base block">진단명</label>
+            <Input
+              placeholder="진단 받으신 병명 (예: 십자인대파열)"
+              value={formData.diagnosis}
+              onChange={e => handleInputChange('diagnosis', e.target.value)}
+              className="bg-white border-0 h-12 text-gray-800 placeholder:text-gray-500"
+              required
+            />
           </div>
 
           <div className="flex items-center justify-between">
