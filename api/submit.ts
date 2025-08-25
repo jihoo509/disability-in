@@ -7,14 +7,18 @@ type SubmitBody = {
   site?: string;
   name?: string;
   phone?: string;
+  gender?: '남' | '여';
 
   // 전화상담 폼
-  birth?: string;          // YYMMDD
+  birth?: string;
 
   // 온라인 분석 폼
-  rrnFront?: string;       // YYMMDD
-  rrnBack?: string;        // 7자리
-  gender?: '남' | '여';
+  rrnFront?: string;
+  rrnBack?: string;
+
+  // ✨ 새로 추가된 필드들
+  surgeryDate?: string;
+  diagnosis?: string;
 };
 
 const { GH_TOKEN, GH_REPO_FULLNAME } = process.env;
@@ -41,37 +45,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const name = body.name || '';
   const phone = body.phone || '';
   const gender = body.gender;
+  
+  // ✨ 새로 추가된 필드 가져오기
+  const surgeryDate = body.surgeryDate || '';
+  const diagnosis = body.diagnosis || '';
 
   if (!type || (type !== 'phone' && type !== 'online')) {
     return res.status(400).json({ ok: false, error: 'Invalid type' });
   }
 
-  // ① 전화상담: birth(YYMMDD)
   const birth6 = type === 'phone' ? (body.birth || '') : (body.rrnFront || '');
-
-  // ② 온라인분석: rrnFront + rrnBack → 900101-1234567
   const rrnFull =
     type === 'online' && body.rrnFront && body.rrnBack
       ? `${body.rrnFront}-${body.rrnBack}`
       : '';
 
-  // 제목은 개인정보 노출 줄이기 위해 마스킹(엑셀은 풀로 보냄 — 아래 export.ts에서)
   const masked = rrnFull ? `${rrnFull.slice(0, 8)}******` : (birth6 ? `${birth6}-*******` : '생년월일 미입력');
   const requestKo = type === 'phone' ? '전화' : '온라인';
   const title = `[${requestKo}] ${name || '이름 미입력'} / ${gender || '성별 미선택'} / ${masked}`;
 
-  // 깃허브 라벨
   const labels = [`type:${type}`, `site:${site}`];
 
-  // 원본 페이로드(엑셀은 여기 값을 씀)
   const payload = {
     site,
     type,
     name,
     phone,
     gender,
-    birth6,     // 전화상담 생년월일(또는 온라인의 앞6)
-    rrnFull,    // 온라인분석 주민번호 13자리(하이픈 포함)
+    birth6,
+    rrnFull,
+    surgeryDate, // ✨ payload에 추가
+    diagnosis,   // ✨ payload에 추가
     requestedAt: new Date().toISOString(),
     ua: (req.headers['user-agent'] || '').toString().slice(0, 200),
     ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString(),
