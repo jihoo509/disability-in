@@ -3,6 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { PrivacyPolicyDialog } from './PrivacyPolicyDialog';
+import UtmHiddenFields from './UtmHiddenFields'; // ✨ 1. UTM 컴포넌트 불러오기
 
 interface PhoneConsultationFormProps {
   title?: string;
@@ -14,8 +15,8 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
     birthDate: '',     // YYYYMMDD
     gender: '',
     phoneNumber: '',   // 8자리
-    surgeryDate: '',   // <-- 1단계: 추가됨
-    diagnosis: '',     // <-- 1단계: 추가됨
+    surgeryDate: '',
+    diagnosis: '',
     agreedToTerms: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,15 +49,21 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
       agreedToTerms: false,
     });
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  // ✨ 2. event 타입을 HTMLFormElement로 바꿔줍니다.
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+    // ✨ 3. 숨겨진 UTM 필드를 포함한 모든 폼 데이터를 읽어옵니다.
+    const form = event.currentTarget;
+    const formElements = Object.fromEntries(new FormData(form).entries());
 
     const now = new Date();
     const kstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
 
     try {
+      // ✨ 4. payload 생성 방식을 수정합니다.
       const payload = {
         type: 'phone' as const,
         site: '후유장해', // 사이트 고유 ID
@@ -64,9 +71,12 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
         phone: `010-${(formData.phoneNumber || '').trim()}`,
         birth: formData.birthDate.trim(),
         gender: formData.gender as '남' | '여' | '',
-        surgeryDate: formData.surgeryDate.trim(), // <-- 3단계: 추가됨
-        diagnosis: formData.diagnosis.trim(),     // <-- 3단계: 추가됨
+        surgeryDate: formData.surgeryDate.trim(),
+        diagnosis: formData.diagnosis.trim(),
         requestedAt: kstDate.toISOString(),
+        
+        // 읽어온 UTM 데이터를 payload에 합쳐줍니다.
+        ...formElements
       };
 
       const res = await fetch('/api/submit', {
@@ -116,6 +126,9 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
+          {/* ✨ 5. 비밀 입력 칸(UTM 정보)을 폼 안에 추가합니다. */}
+          <UtmHiddenFields />
+
           <div className="space-y-2">
             <label className="text-white text-base block">이름</label>
             <Input
@@ -191,7 +204,6 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
             </div>
           </div>
 
-          {/* 2단계: 추가된 입력 칸 */}
           <div className="space-y-2">
             <label className="text-white text-base block">수술 시점</label>
             <Input
@@ -260,3 +272,4 @@ export function PhoneConsultationForm({ title }: PhoneConsultationFormProps) {
     </div>
   );
 }
+

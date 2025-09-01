@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export const config = { runtime: 'nodejs' };
 
+// ✨ 1. SubmitBody 타입에 UTM 필드들을 추가합니다.
 type SubmitBody = {
   type: 'phone' | 'online';
   site?: string;
@@ -16,9 +17,20 @@ type SubmitBody = {
   rrnFront?: string;
   rrnBack?: string;
 
-  // ✨ 새로 추가된 필드들
+  // 후유장해 필드
   surgeryDate?: string;
   diagnosis?: string;
+
+  // UTM 필드
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  landing_page?: string;
+  referrer?: string;
+  first_utm?: string;
+  last_utm?: string;
 };
 
 const { GH_TOKEN, GH_REPO_FULLNAME } = process.env;
@@ -41,45 +53,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body as SubmitBody;
 
   const type = body.type;
-  const site = body.site || 'teeth';
+  const site = body.site || 'unknown'; // 기본값 수정
   const name = body.name || '';
-  const phone = body.phone || '';
   const gender = body.gender;
-  
-  // ✨ 새로 추가된 필드 가져오기
-  const surgeryDate = body.surgeryDate || '';
-  const diagnosis = body.diagnosis || '';
 
   if (!type || (type !== 'phone' && type !== 'online')) {
     return res.status(400).json({ ok: false, error: 'Invalid type' });
   }
 
+  // 제목 생성 로직은 기존과 동일
   const birth6 = type === 'phone' ? (body.birth || '') : (body.rrnFront || '');
   const rrnFull =
     type === 'online' && body.rrnFront && body.rrnBack
       ? `${body.rrnFront}-${body.rrnBack}`
       : '';
-
   const masked = rrnFull ? `${rrnFull.slice(0, 8)}******` : (birth6 ? `${birth6}-*******` : '생년월일 미입력');
   const requestKo = type === 'phone' ? '전화' : '온라인';
   const title = `[${requestKo}] ${name || '이름 미입력'} / ${gender || '성별 미선택'} / ${masked}`;
 
   const labels = [`type:${type}`, `site:${site}`];
 
+  // ✨ 2. payload 생성 방식을 수정하여, form에서 보낸 모든 정보를 받도록 합니다.
   const payload = {
-    site,
-    type,
-    name,
-    phone,
-    gender,
-    birth6,
-    rrnFull,
-    surgeryDate, // ✨ payload에 추가
-    diagnosis,   // ✨ payload에 추가
+    ...body, // form에서 보낸 모든 데이터를 그대로 포함
     requestedAt: new Date().toISOString(),
     ua: (req.headers['user-agent'] || '').toString().slice(0, 200),
     ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString(),
   };
+  
+  // Vercel에서 불필요하게 추가하는 헤더 정보 제거
+  if ('headers' in payload) {
+    delete (payload as any).headers;
+  }
 
   const bodyMd = '```json\n' + JSON.stringify(payload, null, 2) + '\n```';
 
@@ -107,3 +112,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ ok: false, error: 'Internal Server Error', detail: e?.message || String(e) });
   }
 }
+

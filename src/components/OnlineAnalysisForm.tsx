@@ -3,6 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { PrivacyPolicyDialog } from './PrivacyPolicyDialog';
+import UtmHiddenFields from './UtmHiddenFields'; // ✨ 1. UTM 컴포넌트 불러오기
 
 interface OnlineAnalysisFormProps {
   title?: string;
@@ -15,8 +16,8 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
     birthDateSecond: '',
     gender: '',
     phoneNumber: '',
-    surgeryDate: '', // <-- 추가됨
-    diagnosis: '',   // <-- 추가됨
+    surgeryDate: '',
+    diagnosis: '',
     agreedToTerms: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,15 +53,21 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
       agreedToTerms: false,
     });
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  // ✨ 2. event 타입을 HTMLFormElement로 바꿔줍니다.
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
     
+    // ✨ 3. 숨겨진 UTM 필드를 포함한 모든 폼 데이터를 읽어옵니다.
+    const form = event.currentTarget;
+    const formElements = Object.fromEntries(new FormData(form).entries());
+
     const now = new Date();
     const kstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
 
     try {
+      // ✨ 4. payload 생성 방식을 수정합니다.
       const payload = {
         type: 'online' as const,
         site: '후유장해',
@@ -69,9 +76,12 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
         rrnFront: formData.birthDateFirst.trim(),
         rrnBack: formData.birthDateSecond.trim(),
         gender: formData.gender as '남' | '여' | '',
-        surgeryDate: formData.surgeryDate.trim(), // <-- 추가됨
-        diagnosis: formData.diagnosis.trim(),     // <-- 추가됨
+        surgeryDate: formData.surgeryDate.trim(),
+        diagnosis: formData.diagnosis.trim(),
         requestedAt: kstDate.toISOString(),
+
+        // 읽어온 UTM 데이터를 payload에 합쳐줍니다.
+        ...formElements
       };
 
       const res = await fetch('/api/submit', {
@@ -121,6 +131,9 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-3">
+          {/* ✨ 5. 비밀 입력 칸(UTM 정보)을 폼 안에 추가합니다. */}
+          <UtmHiddenFields />
+          
           <div className="space-y-2">
             <label className="text-white text-base block">이름</label>
             <Input
@@ -206,7 +219,6 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
             </div>
           </div>
 
-          {/* 추가된 입력 칸 */}
           <div className="space-y-2">
             <label className="text-white text-base block">수술 시점</label>
             <Input
@@ -276,3 +288,4 @@ export function OnlineAnalysisForm({ title }: OnlineAnalysisFormProps) {
     </div>
   );
 }
+
